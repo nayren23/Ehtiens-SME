@@ -55,3 +55,37 @@ def get_seance_info_by_city_name(city_name) -> SeanceModel:
         seances_list.append(seance)
 
     return seances_list
+
+
+def create_seance(data: dict) -> int:
+    """Create a new seance"""
+
+    query = """
+        INSERT INTO et_seance (
+            se_date_time, 
+            se_room, 
+            se_language, 
+            mo_id_movie, 
+            ci_id_cinema
+        ) VALUES (%s, %s, %s, %s, %s);
+    """
+
+    params = (
+        data.get("date_time"),  # Format 'YYYY-MM-DD HH:MM:SS'
+        data.get("room"),
+        data.get("language"),  # Ex: 'VOSTFR' ou 'VF'
+        data.get("movie_id"),
+        data.get("cinema_id"),
+    )
+
+    conn = connect_mysql.connect()
+    try:
+        connect_mysql.execute_command(conn, query, params)
+
+        # Récupération ID
+        res_id = connect_mysql.get_query(conn, "SELECT LAST_INSERT_ID() as id;", None, True)
+        new_id = res_id[0]["id"]
+
+        return new_id
+    finally:
+        connect_mysql.disconnect(conn)
