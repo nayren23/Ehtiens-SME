@@ -6,6 +6,7 @@ from ethiens_sme import app, connect_mysql
 from ethiens_sme.model.movie_model import MovieModel
 from ethiens_sme.utils.exception.exceptions import ApiException
 from ethiens_sme.model.actor_model import ActorModel
+from ethiens_sme.service import actor_service
 from typing import List
 
 
@@ -89,13 +90,13 @@ def get_movie_details_by_id(movie_id: int) -> MovieModel:
 
 def create_movie(data: dict) -> int:
     """
-    Create a new movie and link actors.
-    Returns the new movie ID.
+    Create a new movie.
+    Actors are passed by name. They are created if they don't exist.
     """
     conn = connect_mysql.connect()
 
     try:
-        # 1. Insertion du film
+        # --- 1. Insertion du film (Identique à avant) ---
         query_movie = """
             INSERT INTO et_movie (
                 mo_title, mo_date_publication, mo_length_minutes, 
@@ -112,9 +113,9 @@ def create_movie(data: dict) -> int:
             data.get("synopsis"),
             data.get("poster"),
             data.get("country"),
-            data.get("producer"),  # Correspond au Réalisateur/Producteur
-            data.get("being_date"),  # Date début diffusion
-            data.get("end_date"),  # Date fin diffusion
+            data.get("producer"),
+            data.get("being_date"),
+            data.get("end_date"),
         )
 
         connect_mysql.get_query(conn, query_movie, params_movie)
@@ -122,17 +123,20 @@ def create_movie(data: dict) -> int:
         query_get_id = "SELECT LAST_INSERT_ID() as id;"
         res_id = connect_mysql.get_query(conn, query_get_id, None, True)
         new_movie_id = res_id[0]["id"]
-        actor_ids = data.get("actor_ids", [])
+        actor_names = data.get("actor_names", [])
 
-        if actor_ids:
+        if actor_names:
             query_casting = "INSERT INTO et_casting (mo_id_movie, ac_id_actor) VALUES (%s, %s);"
-            for actor_id in actor_ids:
-                connect_mysql.execute_command(conn, query_casting, (new_movie_id, actor_id))
-        conn.commit()
+
+            for name in actor_names:
+                clean_name = name.strip()
+                if clean_name:
+                    actor_id = actor_service.get_or_create_actor(conn, clean_name)
+                    connect_mysql.execute_command(conn, query_casting, (new_movie_id, actor_id))
+
         return new_movie_id
 
     except Exception as e:
-        conn.rollback()
         raise e
     finally:
         connect_mysql.disconnect(conn)
