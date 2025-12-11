@@ -16,7 +16,6 @@ from ethiens_sme.utils.exception.user_exceptions import (
 
 def get_seance_info_by_city_name(city_name) -> SeanceModel:
     """Get car information by seance name"""
-
     query = """
         SELECT 
             m.mo_title AS Titre_Film,
