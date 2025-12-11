@@ -43,3 +43,10 @@ class FileException(ApiException):
 
 class EmailException(ApiException):
     """Exception for email related errors"""
+
+
+class ResourceNotFoundException(ApiException):
+    """Exception raised when a resource is not found (404)"""
+
+    def __init__(self, message="Resource not found"):
+        super().__init__(message, status_code=404)

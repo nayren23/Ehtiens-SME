@@ -3,9 +3,9 @@ name = "ethiens-sme"
 version = "1.0.0"
 description = "Backend of Eh Tiens"
 authors = [
+    {name = "Rayan CHOUCHANE"},
     {name = "Abdel-Waheb SAKKAL"},
     {name = "Vidjay VELAYOUDAM"},
-    {name = "Rayan CHOUCHANE"},
     {name = "Etienne MURZEAU"},
     {name = "Alex YAO"}]
 

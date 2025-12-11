@@ -35,14 +35,23 @@ def authenticate():
     json_object = request.json
     try:
         user_bo = user_service.authenticate(json_object.get("login", None), json_object.get("password", None))
+
         response = make_response(jsonify(message="AUTHENTIFIED_SUCCESSFULLY", pseudo_verified=user_bo.pseudo))
 
-        access_token = create_access_token({"id": user_bo.id})
+        # --- CORRECTION ICI ---
+        # On passe directement l'ID converti en string
+        # Au lieu de {"id": user_bo.id}
+        user_id_str = str(user_bo.id)
+
+        access_token = create_access_token(identity=user_id_str)
         set_access_cookies(response, access_token)
+
         if json_object.get("keepLoggedIn", False):
-            refresh_token = create_refresh_token({"id": user_bo.id})
+            refresh_token = create_refresh_token(identity=user_id_str)
             set_refresh_cookies(response, refresh_token)
+
         response.status_code = 200
+
     except ApiException as e:
         response = jsonify(message=e.message), e.status_code
 

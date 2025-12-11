@@ -1,6 +1,9 @@
+"""Movie related endpoints"""
+
 from flask import Blueprint, request, jsonify
-from ethiens_sme.utils.exception.exceptions import ApiException
+from ethiens_sme.utils.exception.exceptions import ApiException, ResourceNotFoundException
 from ethiens_sme.service import movie_service
+from flask_jwt_extended import jwt_required
 
 # Définition du Blueprint
 movie = Blueprint("movie", __name__, url_prefix="/movie")
@@ -23,34 +26,31 @@ def get_movie_details(movie_id):
 
 
 @movie.route("/", methods=["POST"])
+@jwt_required()
 def create_new_movie():
     """
     Create a new movie with its details and actors.
-    Expected JSON:
-    {
-        "title": "Titanic",
-        "length_minutes": 195,
-        "minimum_age": "12",
-        "synopsis": "Un bateau coule...",
-        "producer": "James Cameron",
-        "date_publication": "1997-01-01",
-        "being_date": "2025-01-01",
-        "end_date": "2025-02-01",
-        "actor_ids": [1, 2]
-    }
     """
     try:
         data = request.get_json()
-
-        # Validation basique
         if not data or not data.get("title"):
             return jsonify({"message": "Title is required"}), 400
 
         new_id = movie_service.create_movie(data)
-
         return jsonify({"message": "Movie created successfully", "id": new_id}), 201
 
     except ApiException as e:
         return jsonify({"message": e.message}), e.status_code
-    except Exception as e:
+
+
+@movie.route("/list", methods=["GET"])
+def get_movies_list():
+    """
+    Get a simple list of movies (id, title).
+    Used to populate select inputs in the frontend.
+    """
+    try:
+        movies = movie_service.get_all_movies_simple()
+        return jsonify(movies), 200
+    except ResourceNotFoundException as e:
         return jsonify({"message": str(e)}), 500

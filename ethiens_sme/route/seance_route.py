@@ -1,7 +1,9 @@
+"""Seance related endpoints"""
+
 from flask import Blueprint, request, jsonify
-from ethiens_sme.utils.role_user import RoleUser, role_required
 from ethiens_sme.utils.exception.exceptions import ApiException
 from ethiens_sme.service import seance_service
+from flask_jwt_extended import jwt_required
 
 seance = Blueprint("seance", __name__, url_prefix="/seance")
 
@@ -24,6 +26,7 @@ def get_seances_by_city(ville_name):
 
 
 @seance.route("/", methods=["POST"])
+@jwt_required()
 def add_seance():
     """
     Add a new seance to a cinema schedule.

@@ -2,12 +2,12 @@
 Docstring for Ehtiens-SME.ethiens_sme.service.movie_service
 """
 
-from ethiens_sme import app, connect_mysql
+from typing import List
+from ethiens_sme import connect_mysql
 from ethiens_sme.model.movie_model import MovieModel
-from ethiens_sme.utils.exception.exceptions import ApiException
+from ethiens_sme.utils.exception.exceptions import ResourceNotFoundException
 from ethiens_sme.model.actor_model import ActorModel
 from ethiens_sme.service import actor_service
-from typing import List
 
 
 def get_actors_by_movie_id(conn, movie_id: int) -> List[ActorModel]:
@@ -30,9 +30,7 @@ def get_actors_by_movie_id(conn, movie_id: int) -> List[ActorModel]:
             c.mo_id_movie = %s;
     """
 
-    # On utilise la connexion passée en paramètre
     actors_results = connect_mysql.get_query(conn, query_actors, (movie_id,), True)
-
     if actors_results:
         for actor_row in actors_results:
             actor = ActorModel(
@@ -47,21 +45,17 @@ def get_movie_details_by_id(movie_id: int) -> MovieModel:
     """Get detailed information about a movie AND its casting by its ID"""
 
     conn = connect_mysql.connect()
-
     try:
-        # --- REQUÊTE 1 : Les infos du film ---
         query_movie = """
             SELECT * FROM et_movie WHERE mo_id_movie = %s;
         """
         movie_results = connect_mysql.get_query(conn, query_movie, (movie_id,), True)
 
         if not movie_results:
-            # On raise l'exception ici, le finally se chargera de la déconnexion
-            raise Exception(f"Movie with id {movie_id} not found")
+            raise ResourceNotFoundException(f"Movie with id {movie_id} not found")
 
         row = movie_results[0]
 
-        # Création de l'objet Movie sans les acteurs pour l'instant
         movie = MovieModel(
             id=row["mo_id_movie"],
             date_publication=row["mo_date_publication"],
@@ -76,15 +70,11 @@ def get_movie_details_by_id(movie_id: int) -> MovieModel:
             end_date=row["mo_end_date"],
             actors=[],
         )
-
-        # --- APPEL DE LA FONCTION SEPARÉE (REQUÊTE 2) ---
-        # On passe la connexion 'conn' et l'id du film
         movie.actors = get_actors_by_movie_id(conn, movie_id)
 
         return movie
 
     finally:
-        # Le bloc finally s'exécute toujours (succès ou erreur), assurant la déconnexion
         connect_mysql.disconnect(conn)
 
 
@@ -96,7 +86,6 @@ def create_movie(data: dict) -> int:
     conn = connect_mysql.connect()
 
     try:
-        # --- 1. Insertion du film (Identique à avant) ---
         query_movie = """
             INSERT INTO et_movie (
                 mo_title, mo_date_publication, mo_length_minutes, 
@@ -138,5 +127,25 @@ def create_movie(data: dict) -> int:
 
     except Exception as e:
         raise e
+    finally:
+        connect_mysql.disconnect(conn)
+
+
+def get_all_movies_simple() -> list:
+    """
+    Get a lightweight list of all movies (ID and Title only).
+    Useful for dropdown menus.
+    """
+    query = "SELECT mo_id_movie, mo_title FROM et_movie ORDER BY mo_title ASC;"
+
+    conn = connect_mysql.connect()
+    try:
+        results = connect_mysql.get_query(conn, query, None, True)
+
+        movies_list = []
+        if results:
+            for row in results:
+                movies_list.append({"id": row["mo_id_movie"], "title": row["mo_title"]})
+        return movies_list
     finally:
         connect_mysql.disconnect(conn)

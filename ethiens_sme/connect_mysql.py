@@ -1,7 +1,5 @@
 """MySQL database interactions"""
 
-# !/usr/bin/python
-
 import os
 from configparser import NoSectionError
 import mysql.connector

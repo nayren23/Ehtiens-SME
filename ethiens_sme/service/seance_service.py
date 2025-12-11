@@ -1,17 +1,9 @@
-# function pour chercer toutes les séances dans une ville
-
 """
 Docstring for Ehtiens-SME.ethiens_sme.service.seance_service
 """
 
-from ethiens_sme import app, connect_mysql
+from ethiens_sme import connect_mysql
 from ethiens_sme.model.seance_model import SeanceModel
-from ethiens_sme.utils.exception.exceptions import MissingInputException
-
-from ethiens_sme.utils.exception.user_exceptions import (
-    UserNotFoundException,
-    PasswordIncorrectException,
-)
 
 
 def get_seance_info_by_city_name(city_name) -> SeanceModel:
@@ -82,7 +74,6 @@ def create_seance(data: dict) -> int:
     try:
         connect_mysql.execute_command(conn, query, params)
 
-        # Récupération ID
         res_id = connect_mysql.get_query(conn, "SELECT LAST_INSERT_ID() as id;", None, True)
         new_id = res_id[0]["id"]
 
