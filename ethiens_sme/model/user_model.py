@@ -1,7 +1,6 @@
 """User model module"""
 
 import dataclasses
-from datetime import datetime
 
 
 @dataclasses.dataclass

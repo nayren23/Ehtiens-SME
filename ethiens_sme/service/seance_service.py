@@ -9,20 +9,20 @@ from ethiens_sme.model.seance_model import SeanceModel
 def get_seance_info_by_city_name(city_name) -> SeanceModel:
     """Get car information by seance name"""
     query = """
-        SELECT 
+        SELECT
             m.mo_title AS Titre_Film,
             s.se_date_time AS Date_Heure,
             s.se_room AS Salle,
             s.se_language AS Langue,
             c.ci_cinema_name AS Cinema,
             c.ci_city AS Ville
-        FROM 
+        FROM
             et_seance AS s
-        JOIN 
+        JOIN
             et_cinema AS c ON s.ci_id_cinema = c.ci_id_cinema
-        JOIN 
+        JOIN
             et_movie AS m ON s.mo_id_movie = m.mo_id_movie
-        WHERE 
+        WHERE
             c.ci_city = %s;
     """
     params = (city_name,)
@@ -54,10 +54,10 @@ def create_seance(data: dict) -> int:
 
     query = """
         INSERT INTO et_seance (
-            se_date_time, 
-            se_room, 
-            se_language, 
-            mo_id_movie, 
+            se_date_time,
+            se_room,
+            se_language,
+            mo_id_movie,
             ci_id_cinema
         ) VALUES (%s, %s, %s, %s, %s);
     """

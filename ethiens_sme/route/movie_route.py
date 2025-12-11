@@ -37,7 +37,7 @@ def create_new_movie():
             return jsonify({"message": "Title is required"}), 400
 
         new_id = movie_service.create_movie(data)
-        return jsonify({"message": "Movie created successfully", "id": new_id}), 201
+        return jsonify({"message": "Movie created", "id": new_id}), 201
 
     except ApiException as e:
         return jsonify({"message": e.message}), e.status_code

@@ -1,18 +1,13 @@
 """User related endpoints"""
 
-from flask import Blueprint, request, jsonify, send_file, make_response
-from ethiens_sme import app
+from flask import Blueprint, request, jsonify, make_response
 from ethiens_sme.service import user_service
 from ethiens_sme.utils.exception.exceptions import ApiException
 from flask_jwt_extended import (
-    get_jwt_identity,
-    jwt_required,
     create_access_token,
     set_access_cookies,
     create_refresh_token,
     set_refresh_cookies,
-    unset_jwt_cookies,
-    verify_jwt_in_request,
 )
 
 user = Blueprint("user", __name__, url_prefix="/user")

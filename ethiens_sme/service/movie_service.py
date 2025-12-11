@@ -18,15 +18,15 @@ def get_actors_by_movie_id(conn, movie_id: int) -> List[ActorModel]:
     actors_list = []
 
     query_actors = """
-        SELECT 
-            a.ac_id_actor, 
-            a.ac_actor_name, 
+        SELECT
+            a.ac_id_actor,
+            a.ac_actor_name,
             a.ac_actor_picture
-        FROM 
+        FROM
             et_actors AS a
-        JOIN 
+        JOIN
             et_casting AS c ON a.ac_id_actor = c.ac_id_actor
-        WHERE 
+        WHERE
             c.mo_id_movie = %s;
     """
 
@@ -88,8 +88,8 @@ def create_movie(data: dict) -> int:
     try:
         query_movie = """
             INSERT INTO et_movie (
-                mo_title, mo_date_publication, mo_length_minutes, 
-                mo_minimum_age, mo_synopsis, mo_poster, 
+                mo_title, mo_date_publication, mo_length_minutes,
+                mo_minimum_age, mo_synopsis, mo_poster,
                 mo_country, mo_producer, mo_being_date, mo_end_date
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
