@@ -1,26 +1,61 @@
+"""
+Docstring for Ehtiens-SME.ethiens_sme.service.user_service
+"""
+
 import bcrypt
-from ethiens_sme import app, connect_mysql
-from ethiens_sme.service import admin_service
+from ethiens_sme import connect_mysql
+from ethiens_sme.model.user_model import UserModel
+from ethiens_sme.utils.exception.exceptions import MissingInputException
 
-# Requetes SQL ici
+from ethiens_sme.utils.exception.user_exceptions import (
+    UserNotFoundException,
+    PasswordIncorrectException,
+)
 
 
-def get_user_role(user_id):
-    """Get user role"""
-    with connect_mysql.connect() as conn:
-        admin_service.verify_user(user_id)
+def authenticate(login, password) -> UserModel:
+    """authenticate the user"""
+    if not login:
+        raise MissingInputException("LOGIN_MISSING")
+    if not password:
+        raise MissingInputException("PASSWORD_MISSING")
 
-        query = """
-        SELECT r_id, u_id
-        FROM uniride.ur_user
-        WHERE u_id = %s
-        """
+    user_bo = get_user_by_login(login)
 
-        r_id = connect_mysql.get_query(conn, query, (user_id,))
+    # On vérifie le mot de passe
+    if not _verify_password(password, user_bo.password):
+        raise PasswordIncorrectException()
 
-    if not r_id:
-        raise UserNotFoundException
+    return user_bo
 
-    document = r_id[0]
 
-    return {"role": document[0], "id": user_id}
+def get_user_by_login(login) -> UserModel:
+    """Get user infos from db using the pseudo as login"""
+    conn = connect_mysql.connect()
+    try:
+        query = "SELECT * FROM et_user WHERE us_pseudo = %s"
+        params = (login,)
+
+        infos = connect_mysql.get_query(conn, query, params, True)
+
+        if not infos:
+            raise UserNotFoundException()
+
+        row = infos[0]
+
+        user_bo = UserModel(
+            id=row["us_id_user"],
+            pseudo=row["us_pseudo"],
+            password=row["us_password"],
+        )
+        return user_bo
+    finally:
+        connect_mysql.disconnect(conn)
+
+
+def _verify_password(password, hashed_password) -> bool:
+    """Verify the password is correct"""
+    if isinstance(hashed_password, str):
+        hashed_password = hashed_password.encode("utf-8")
+
+    return bcrypt.checkpw(password.encode("utf8"), hashed_password)
