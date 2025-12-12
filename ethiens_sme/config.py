@@ -26,3 +26,7 @@ class Config:
     FLASK_DEBUG = os.getenv("FLASK_DEBUG")
     FLASK_HOST = os.getenv("FLASK_HOST")
     FLASK_PORT = os.getenv("FLASK_PORT")
+    JWT_TOKEN_LOCATION = ["cookies"]
+    JWT_COOKIE_SECURE = False
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-a-changer")
+    JWT_COOKIE_CSRF_PROTECT = False
