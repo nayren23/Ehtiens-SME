@@ -30,3 +30,6 @@ class Config:
     JWT_COOKIE_SECURE = False
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-a-changer")
     JWT_COOKIE_CSRF_PROTECT = False
+
+    # TMDB API Key
+    TMDB_API_KEY = os.getenv("TMDB_API_KEY")
