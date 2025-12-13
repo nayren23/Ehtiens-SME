@@ -141,11 +141,8 @@
         </div>
         
         <!-- Infinite Scroll Trigger -->
-        <div x-show="hasMore && !loading" x-intersect="loadMore()" class="col-span-full py-10 text-center text-gray-400">
+        <div x-show="hasMore" x-intersect="loadMore()" class="col-span-full py-10 text-center text-gray-400">
             Chargement de la suite...
-        </div>
-        <div x-show="loading" class="col-span-full py-10 text-center text-gray-400">
-            Chargement...
         </div>
     </div>
 </div>
