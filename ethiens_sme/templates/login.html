@@ -20,7 +20,7 @@
                 localStorage.setItem('isLoggedIn', 'true');
                 window.location.href = '/admin/dashboard';
             } else {
-                this.error = data.message || 'Erreur de connexion';
+                this.error = 'Identifiant ou Mot de passe incorrect';
             }
         } catch (e) {
             this.error = 'Erreur réseau';
