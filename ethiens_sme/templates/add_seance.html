@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-8 border border-gray-300 shadow-lg rounded-lg mt-10" x-data="seanceForm()">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Planifier des Séances</h2>
+
+    <form @submit.prevent="submitSeances">
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Cinéma *</label>
+            <select x-model="form.cinema_id" @change="fetchRooms" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                <option value="">Sélectionner un cinéma</option>
+                <template x-for="c in cinemas" :key="c.ci_id_cinema">
+                    <option :value="c.ci_id_cinema" x-text="c.ci_cinema_name + ' (' + c.ci_city + ')'"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Salle *</label>
+            <div class="relative">
+                <select x-model="form.room" :disabled="!form.cinema_id || loadingRooms" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    <option value="">Sélectionner une salle</option>
+                    <template x-for="room in rooms" :key="room">
+                        <option :value="room" x-text="room"></option>
+                    </template>
+                    <option value="__other__">Autre (Saisir manuellement)</option>
+                </select>
+                <div x-show="loadingRooms" class="absolute right-3 top-2 text-gray-400 text-sm">Chargement...</div>
+            </div>
+            
+            <!-- Manual Room Input -->
+            <div x-show="form.room === '__other__'" class="mt-2">
+                <input x-model="customRoom" placeholder="Nom de la salle" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Film *</label>
+            <select x-model="form.movie_id" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                <option value="">Sélectionner un film</option>
+                <template x-for="m in movies" :key="m.id">
+                    <option :value="m.id" x-text="m.title"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Sélectionner 3 Dates *</label>
+            <input x-ref="datepicker" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-white cursor-pointer" placeholder="Cliquez pour choisir 3 dates..." required>
+            <p class="text-xs text-gray-500 mt-1">Le calendrier vous permet de sélectionner visuellement 3 jours.</p>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Heure des séances *</label>
+            <input x-ref="timepicker" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-white cursor-pointer" placeholder="Choisir l'heure..." required>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Langue</label>
+            <select x-model="form.language" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                <option value="VF">VF</option>
+                <option value="VOSTFR">VOSTFR</option>
+                <option value="VO">VO</option>
+            </select>
+        </div>
+
+        <div x-show="submitError" class="mb-4 text-red-500 text-center" x-text="submitError"></div>
+        <div x-show="submitSuccess" class="mb-4 text-green-500 text-center">Séances ajoutées avec succès !</div>
+
+        <div class="flex items-center justify-end mt-6">
+            <button :disabled="submitting" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out" type="submit">
+                <span x-show="!submitting">Planifier les 3 Séances</span>
+                <span x-show="submitting">Enregistrement...</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function seanceForm() {
+        return {
+            cinemas: [],
+            movies: [],
+            rooms: [],
+            loadingRooms: false,
+            customRoom: '',
+            
+            form: {
+                cinema_id: '',
+                movie_id: '',
+                room: '',
+                language: 'VF',
+                selectedDates: [],
+                selectedTime: ''
+            },
+            
+            submitting: false,
+            submitError: '',
+            submitSuccess: false,
+
+            async init() {
+                // Initialize Flatpickr for Dates (Multiple Mode)
+                flatpickr(this.$refs.datepicker, {
+                    mode: "multiple",
+                    dateFormat: "Y-m-d",
+                    minDate: "today",
+                    locale: "fr",
+                    conjunction: ", ",
+                    maxDate: new Date().fp_incr(365), // 1 year from now
+                    onChange: (selectedDates, dateStr, instance) => {
+                        this.form.selectedDates = selectedDates.map(d => instance.formatDate(d, "Y-m-d"));
+                    }
+                });
+
+                // Initialize Flatpickr for Time
+                flatpickr(this.$refs.timepicker, {
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    time_24hr: true,
+                    locale: "fr",
+                    onChange: (selectedDates, dateStr, instance) => {
+                        this.form.selectedTime = dateStr;
+                    }
+                });
+
+                // Load Data
+                try {
+                    const resC = await fetch('/seance/cinemas');
+                    if(resC.ok) this.cinemas = await resC.json();
+                    
+                    const resM = await fetch('/movie/list');
+                    if(resM.ok) this.movies = await resM.json();
+                } catch(e) {
+                    console.error("Failed to load lists");
+                }
+            },
+
+            async fetchRooms() {
+                if (!this.form.cinema_id) {
+                    this.rooms = [];
+                    return;
+                }
+                this.loadingRooms = true;
+                this.form.room = ''; // Reset selection
+                try {
+                    const res = await fetch(`/seance/cinema/${this.form.cinema_id}/rooms`);
+                    if (res.ok) {
+                        this.rooms = await res.json();
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch rooms");
+                } finally {
+                    this.loadingRooms = false;
+                }
+            },
+
+            async submitSeances() {
+                this.submitting = true;
+                this.submitError = '';
+                this.submitSuccess = false;
+
+                if (this.form.selectedDates.length !== 3) {
+                    this.submitError = "Veuillez sélectionner exactement 3 dates.";
+                    this.submitting = false;
+                    return;
+                }
+
+                if (!this.form.selectedTime) {
+                    this.submitError = "Veuillez sélectionner une heure.";
+                    this.submitting = false;
+                    return;
+                }
+
+                const finalRoom = this.form.room === '__other__' ? this.customRoom : this.form.room;
+                if (!finalRoom) {
+                    this.submitError = "Veuillez sélectionner ou saisir une salle.";
+                    this.submitting = false;
+                    return;
+                }
+
+                const promises = this.form.selectedDates.map(date => {
+                    const dateTime = `${date} ${this.form.selectedTime}:00`; 
+                    const payload = {
+                        date_time: dateTime,
+                        room: finalRoom,
+                        language: this.form.language,
+                        movie_id: this.form.movie_id,
+                        cinema_id: this.form.cinema_id
+                    };
+                    return fetch('/seance/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).then(res => {
+                        if (!res.ok) throw new Error('Erreur');
+                    });
+                });
+
+                try {
+                    await Promise.all(promises);
+                    this.submitSuccess = true;
+                    setTimeout(() => window.location.href = '/admin/dashboard', 1500);
+                } catch (e) {
+                    this.submitError = "Une erreur est survenue lors de la création d'une ou plusieurs séances.";
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

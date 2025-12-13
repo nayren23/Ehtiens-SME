@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8" x-data="movieDetail()">
+    <template x-if="loading">
+        <div class="text-center py-20 text-gray-500">Chargement du film...</div>
+    </template>
+
+    <template x-if="!loading && movie">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Movie Header / Backdrop -->
+            <div class="relative bg-gray-900 text-white p-8">
+                <div class="flex flex-col md:flex-row gap-8">
+                    <!-- Poster -->
+                    <div class="flex-shrink-0 w-64 mx-auto md:mx-0">
+                         <img :src="movie.poster ? (movie.poster.startsWith('http') ? movie.poster : 'https://image.tmdb.org/t/p/w500' + movie.poster) : 'https://via.placeholder.com/300x450?text=No+Poster'" class="rounded shadow-xl w-full">
+                    </div>
+                    
+                    <!-- Info -->
+                    <div class="flex-grow">
+                        <h1 class="text-4xl font-bold mb-2" x-text="movie.title"></h1>
+                        <div class="text-gray-300 text-sm mb-4">
+                            <span x-text="movie.date_publication"></span> • 
+                            <span x-text="movie.length_minutes + ' min'"></span> • 
+                            <span x-text="movie.country"></span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h3 class="font-bold text-lg mb-1">Synopsis</h3>
+                            <p class="text-gray-300 leading-relaxed" x-text="movie.synopsis"></p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h3 class="font-bold text-lg mb-1">Casting</h3>
+                            <div class="flex flex-wrap gap-4">
+                                <template x-for="actor in movie.actors" :key="actor.id">
+                                    <div class="flex items-center space-x-2 bg-gray-800 rounded-full px-3 py-1">
+                                        <template x-if="actor.picture">
+                                             <img :src="actor.picture.startsWith('http') ? actor.picture : 'https://image.tmdb.org/t/p/w200' + actor.picture" class="w-8 h-8 rounded-full object-cover">
+                                        </template>
+                                        <span class="text-sm" x-text="actor.name"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seances Section -->
+            <div class="p-8 text-center">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Voir les prochaines Séances</h2>
+                <a :href="'/?movie=' + encodeURIComponent(movie.title)" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="-ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M9.25 13.5A2.25 2.25 0 0011.5 11.25V6.75a2.25 2.25 0 10-4.5 0v4.5c0 .414.336.75.75.75h3.25zm-.75-6.75a.75.75 0 00-1.5 0v4.5c0 .414.336.75.75.75h3.25a.75.75 0 000-1.5H8.5V6.75z" />
+                    </svg>
+                    Afficher les Séances pour ce Film
+                </a>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+    function movieDetail() {
+        return {
+            loading: true,
+            movie: null,
+
+            async init() {
+                const movieId = {{ movie_id }};
+                
+                try {
+                    // Fetch Movie Details
+                    const resM = await fetch(`/movie/details/${movieId}`);
+                    if (resM.ok) {
+                        this.movie = await resM.json();
+                    }
+                } catch (e) {
+                    console.error("Error loading data", e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+        }
+    }
+</script>
+{% endblock %}

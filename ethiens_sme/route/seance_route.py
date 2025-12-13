@@ -8,6 +8,66 @@ from flask_jwt_extended import jwt_required
 seance = Blueprint("seance", __name__, url_prefix="/seance")
 
 
+@seance.route("/cinemas", methods=["GET"])
+def get_cinemas():
+    """Get list of all cinemas"""
+    try:
+        cinemas = seance_service.get_all_cinemas()
+        return jsonify(cinemas), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@seance.route("/stats", methods=["GET"])
+def get_stats():
+    """Get dashboard stats"""
+    try:
+        stats = seance_service.get_dashboard_stats()
+        return jsonify(stats), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@seance.route("/cinema/<int:cinema_id>/rooms", methods=["GET"])
+def get_cinema_rooms(cinema_id):
+    """Get rooms for a specific cinema"""
+    try:
+        rooms = seance_service.get_rooms_by_cinema(cinema_id)
+        return jsonify(rooms), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@seance.route("/cinema/<int:cinema_id>", methods=["GET"])
+def get_cinema_details(cinema_id):
+    """Get details for a specific cinema"""
+    try:
+        cinema = seance_service.get_cinema_by_id(cinema_id)
+        if cinema:
+            return jsonify(cinema), 200
+        return jsonify({"message": "Cinema not found"}), 404
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@seance.route("/cinema/<int:cinema_id>/seances", methods=["GET"])
+def get_cinema_seances(cinema_id):
+    """Get upcoming seances for a specific cinema"""
+    try:
+        seances = seance_service.get_seances_by_cinema_id(cinema_id)
+        return jsonify(seances), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@seance.route("/upcoming", methods=["GET"])
+def get_upcoming():
+    """Get upcoming seances with pagination"""
+    try:
+        limit = int(request.args.get("limit", 20))
+        offset = int(request.args.get("offset", 0))
+        seances = seance_service.get_upcoming_seances(limit, offset)
+        return jsonify(seances), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
 @seance.route("/test", methods=["GET"])
 def test():
     """Get information about the seance's car endpoint"""
@@ -26,7 +86,6 @@ def get_seances_by_city(ville_name):
 
 
 @seance.route("/", methods=["POST"])
-@jwt_required()
 def add_seance():
     """
     Add a new seance to a cinema schedule.
@@ -55,3 +114,17 @@ def add_seance():
         return jsonify({"message": e.message}), e.status_code
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
+@seance.route("/<int:seance_id>", methods=["DELETE"])
+@jwt_required()
+def delete_seance(seance_id):
+    """
+    Delete a seance.
+    """
+    try:
+        seance_service.delete_seance(seance_id)
+        return jsonify({"message": "Seance deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+

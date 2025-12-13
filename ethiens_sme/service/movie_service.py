@@ -66,7 +66,7 @@ def get_movie_details_by_id(movie_id: int) -> MovieModel:
             poster=row["mo_poster"],
             country=row["mo_country"],
             producer=row["mo_producer"],
-            being_date=row["mo_being_date"],
+            being_date=row["mo_begin_date"],
             end_date=row["mo_end_date"],
             actors=[],
         )
@@ -90,7 +90,7 @@ def create_movie(data: dict) -> int:
             INSERT INTO et_movie (
                 mo_title, mo_date_publication, mo_length_minutes,
                 mo_minimum_age, mo_synopsis, mo_poster,
-                mo_country, mo_producer, mo_being_date, mo_end_date
+                mo_country, mo_producer, mo_begin_date, mo_end_date
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
 
@@ -103,15 +103,29 @@ def create_movie(data: dict) -> int:
             data.get("poster"),
             data.get("country"),
             data.get("producer"),
-            data.get("being_date"),
+            data.get("begin_date"),
             data.get("end_date"),
         )
 
-        connect_mysql.get_query(conn, query_movie, params_movie)
+        # Use execute_command to ensure the INSERT is committed
+        connect_mysql.execute_command(conn, query_movie, params_movie)
 
-        query_get_id = "SELECT LAST_INSERT_ID() as id;"
-        res_id = connect_mysql.get_query(conn, query_get_id, None, True)
+        query_get_id = "SELECT MAX(mo_id_movie) as id FROM et_movie;"
+        # Or SELECT LAST_INSERT_ID() if we are sure it's the same connection/session. 
+        # Since we pass 'conn', it is the same session.
+        # But let's be safe with LAST_INSERT_ID() in the same session context if possible, 
+        # or just MAX(id) if traffic is low (risky). 
+        # Actually, execute_command commits, so the ID is safe.
+        # But execute_command returns `lastrowid` if configured? 
+        # Let's check execute_command implementation in connect_mysql.py... 
+        # It returns `cur.lastrowid` if "returning" is in query... wait, that's postgres style logic in a mysql file?
+        # The file says: if "returning" in query.lower(): returning_value = cur.lastrowid
+        # For MySQL INSERT, lastrowid is available on the cursor.
+        
+        # Simpler approach: Just get the ID.
+        res_id = connect_mysql.get_query(conn, "SELECT LAST_INSERT_ID() as id;", None, True)
         new_movie_id = res_id[0]["id"]
+        
         actor_names = data.get("actor_names", [])
 
         if actor_names:
@@ -129,6 +143,28 @@ def create_movie(data: dict) -> int:
         raise e
     finally:
         connect_mysql.disconnect(conn)
+
+
+def delete_movie(movie_id: int):
+    """
+    Delete a movie by ID.
+    First removes casting associations and seances, then the movie.
+    """
+    conn = connect_mysql.connect()
+    try:
+        # Delete casting first
+        query_delete_casting = "DELETE FROM et_casting WHERE mo_id_movie = %s;"
+        connect_mysql.execute_command(conn, query_delete_casting, (movie_id,))
+        
+        # Delete seances
+        query_delete_seance = "DELETE FROM et_seance WHERE mo_id_movie = %s;"
+        connect_mysql.execute_command(conn, query_delete_seance, (movie_id,))
+
+        query_delete_movie = "DELETE FROM et_movie WHERE mo_id_movie = %s;"
+        connect_mysql.execute_command(conn, query_delete_movie, (movie_id,))
+    finally:
+        connect_mysql.disconnect(conn)
+
 
 
 def get_all_movies_simple() -> list:
