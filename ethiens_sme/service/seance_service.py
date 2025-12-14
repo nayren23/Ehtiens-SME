@@ -72,6 +72,12 @@ def create_seance(data: dict) -> int:
 
     conn = connect_mysql.connect()
     try:
+        # Check limit: Max 3 seances per movie per cinema
+        check_query = "SELECT COUNT(*) as c FROM et_seance WHERE ci_id_cinema = %s AND mo_id_movie = %s"
+        res_check = connect_mysql.get_query(conn, check_query, (data.get("cinema_id"), data.get("movie_id")), True)
+        if res_check and res_check[0]['c'] >= 3:
+            raise ValueError("Impossible d'ajouter plus de 3 séances pour un même film dans ce cinéma.")
+
         connect_mysql.execute_command(conn, query, params)
 
         res_id = connect_mysql.get_query(conn, "SELECT LAST_INSERT_ID() as id;", None, True)

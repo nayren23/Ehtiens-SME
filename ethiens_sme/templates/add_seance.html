@@ -75,6 +75,7 @@
             <p class="text-xs text-gray-500 mb-3">Sélectionnez plusieurs dates, puis définissez l'heure pour chacune.</p>
             
             <input x-ref="datepicker" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight bg-white cursor-pointer mb-4" placeholder="Ajouter des dates...">
+            <div x-show="maxDatesReached" class="text-red-500 text-sm mb-4 font-bold" style="display: none;">Limite de 3 séances atteinte. La date n'a pas été ajoutée.</div>
 
             <div class="space-y-3">
                 <template x-for="(item, index) in form.schedule" :key="index">
@@ -132,6 +133,7 @@
             rooms: [],
             loadingRooms: false,
             customRoom: '',
+            maxDatesReached: false,
             
             form: {
                 cinema_id: '',
@@ -154,8 +156,19 @@
                     locale: "fr",
                     conjunction: ", ",
                     onChange: (selectedDates, dateStr, instance) => {
+                        // Limit to 3 dates
+                        if (selectedDates.length > 3) {
+                            this.maxDatesReached = true;
+                            instance.setDate(selectedDates.slice(0, 3));
+                            // Continue to update schedule with the valid 3 dates
+                        } else {
+                            this.maxDatesReached = false;
+                        }
+
                         // Merge new dates into schedule, keeping existing times if date exists
-                        const newSchedule = selectedDates.map(d => {
+                        // We use the instance's selectedDates which might have been sliced
+                        const currentDates = instance.selectedDates;
+                        const newSchedule = currentDates.map(d => {
                             const isoDate = instance.formatDate(d, "Y-m-d");
                             const existing = this.form.schedule.find(s => s.date === isoDate);
                             return existing ? existing : { date: isoDate, time: '20:00' }; // Default time 20:00
@@ -181,7 +194,6 @@
                     console.error("Failed to load lists");
                 }
             },
-
             filterMovies() {
                 const query = document.querySelector('[x-model="search"]').value.toLowerCase();
                 if (!query) {
@@ -259,33 +271,39 @@
                     return;
                 }
 
-                const promises = this.form.schedule.map(item => {
-                    if (!item.time) return Promise.resolve(); // Skip invalid times
-                    
-                    const dateTime = `${item.date} ${item.time}:00`; 
-                    const payload = {
-                        date_time: dateTime,
-                        room: finalRoom,
-                        language: this.form.language,
-                        movie_id: this.form.movie_id,
-                        cinema_id: this.form.cinema_id
-                    };
-                    return fetch('/seance/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }).then(res => {
-                        if (!res.ok) throw new Error('Erreur');
-                    });
-                });
-
                 try {
-                    await Promise.all(promises);
+                    // Sequential execution to respect backend limits
+                    for (const item of this.form.schedule) {
+                        if (!item.time) continue; 
+                        
+                        const dateTime = `${item.date} ${item.time}:00`; 
+                        const payload = {
+                            date_time: dateTime,
+                            room: finalRoom,
+                            language: this.form.language,
+                            movie_id: this.form.movie_id,
+                            cinema_id: this.form.cinema_id
+                        };
+
+                        const res = await fetch('/seance/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!res.ok) {
+                            // Try to extract error message if available, else generic
+                            // Assuming backend returns HTML or JSON. If backend raised Exception, it might be 500 HTML.
+                            // We'll check content type or just throw generic.
+                            throw new Error("Erreur lors de l'ajout (Limite atteinte ou erreur serveur).");
+                        }
+                    }
+
                     this.submitSuccess = true;
                     // Redirect to the movie page
                     setTimeout(() => window.location.href = '/movie/' + this.form.movie_id, 1500);
                 } catch (e) {
-                    this.submitError = "Une erreur est survenue lors de la création d'une ou plusieurs séances.";
+                    this.submitError = e.message;
                 } finally {
                     this.submitting = false;
                 }
