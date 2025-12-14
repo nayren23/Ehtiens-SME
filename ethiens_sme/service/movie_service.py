@@ -185,3 +185,49 @@ def get_all_movies_simple() -> list:
         return movies_list
     finally:
         connect_mysql.disconnect(conn)
+
+def get_all_movies_paginated(limit: int = 20, offset: int = 0) -> list:
+    """
+    Get all movies with details, with pagination support.
+    """
+    query = """
+        SELECT 
+            mo_id_movie,
+            mo_title,
+            mo_poster,
+            mo_date_publication,
+            mo_length_minutes,
+            mo_synopsis,
+            mo_country,
+            mo_producer,
+            mo_minimum_age,
+            mo_begin_date,
+            mo_end_date
+        FROM et_movie
+        ORDER BY mo_title ASC
+        LIMIT %s OFFSET %s;
+    """
+    
+    conn = connect_mysql.connect()
+    try:
+        results = connect_mysql.get_query(conn, query, (limit, offset), True)
+        
+        movies = []
+        if results:
+            for row in results:
+                movies.append({
+                    "movie_id": row["mo_id_movie"],
+                    "title": row["mo_title"],
+                    "poster": row["mo_poster"],
+                    "release_date": row["mo_date_publication"].isoformat() if row["mo_date_publication"] else None,
+                    "length_minutes": row["mo_length_minutes"],
+                    "synopsis": row["mo_synopsis"],
+                    "country": row["mo_country"],
+                    "producer": row["mo_producer"],
+                    "minimum_age": row["mo_minimum_age"],
+                    "begin_date": row["mo_begin_date"].isoformat() if row["mo_begin_date"] else None,
+                    "end_date": row["mo_end_date"].isoformat() if row["mo_end_date"] else None
+                })
+        return movies
+    finally:
+        connect_mysql.disconnect(conn)

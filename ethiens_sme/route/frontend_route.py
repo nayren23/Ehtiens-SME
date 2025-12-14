@@ -6,6 +6,10 @@ frontend = Blueprint('frontend', __name__)
 def index():
     return render_template('index.html')
 
+@frontend.route('/seance')
+def seance():
+    return render_template('seance.html')
+
 @frontend.route('/login')
 def login():
     return render_template('login.html')

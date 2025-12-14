@@ -238,3 +238,17 @@ def get_movies_list():
         return jsonify(movies), 200
     except ResourceNotFoundException as e:
         return jsonify({"message": str(e)}), 500
+
+@movie.route("/all", methods=["GET"])
+def get_all_movies():
+    """
+    Get all movies with details (for main page display).
+    Supports pagination via limit/offset.
+    """
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        movies = movie_service.get_all_movies_paginated(limit, offset)
+        return jsonify(movies), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
