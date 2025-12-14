@@ -1,0 +1,73 @@
+[project]
+name = "ethiens-sme"
+version = "2.0.0"
+description = "Backend of Eh Tiens"
+authors = [
+    {name = "Rayan CHOUCHANE"},
+    {name = "Abdel-Waheb SAKKAL"},
+    {name = "Vidjay VELAYOUDAM"},
+    {name = "Etienne MURZEAU"},
+    {name = "Alex YAO"}]
+
+readme = "README.md"
+
+requires-python = ">3.10"
+
+dependencies = [
+  "flask",
+  "flask_restful",
+  "flask_cors",
+  "flask_jwt_extended",
+  "flask_rq2",
+  "flask_caching",
+  "python-dotenv",
+  "mysql-connector-python",
+  "requests",
+  "setuptools",
+  "bcrypt"]
+
+[project.optional-dependencies]
+dev = [
+    "bandit[toml]==1.7.4",
+    "black==22.10.0",
+    "coverage[toml]==7.2.6",
+    "pycodestyle==2.10.0",
+    "pylint>=2.15.16",
+    "schedule>=1.2.2",
+    "flake8"]
+
+[tool.black]
+line-length = 120
+target-version = ['py37']
+include = '\.pyi?$'
+exclude = ''
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["ethiens_sme"]
+
+[pycodestyle]
+count = true
+max-line-length = 120
+statistics = true
+
+[tool.pylint.format]
+max-line-length=120
+
+[tool.pylint.main]
+ignore-paths = []
+
+[tool.pylint.reports]
+msg-template="{path}:{line}: [{msg_id}, {obj}] {msg} ({symbol})"
+output-format="parseable"
+
+[tool.pylint.'messages control']
+max-line-length = 120
+disable=[]
+
+[tool.bandit]
+targets = ["app"]
+exclude_dirs = []

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4" x-data="{
+    stats: { movies: 0, seances: 0, cinemas: 0 },
+    async init() {
+        try {
+            const res = await fetch('/seance/stats');
+            if (res.ok) {
+                this.stats = await res.json();
+            }
+        } catch (e) {
+            console.error('Failed to load stats');
+        }
+    }
+}">
+    <h1 class="text-3xl font-bold mb-8 text-gray-800">Tableau de Bord Administrateur</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
+            <h3 class="text-lg font-semibold text-gray-700">Gestion Films</h3>
+            <p class="text-gray-500 mt-2 mb-4">Ajouter, modifier ou supprimer des films.</p>
+            <a href="/admin/movie/add" class="inline-block bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Ajouter un Film</a>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+            <h3 class="text-lg font-semibold text-gray-700">Gestion Séances</h3>
+            <p class="text-gray-500 mt-2 mb-4">Planifier des séances pour les cinémas.</p>
+            <a href="/admin/seance/add" class="inline-block bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">Ajouter une Séance</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+            <h3 class="text-lg font-semibold text-gray-700">Statistiques</h3>
+            <p class="text-gray-500 mt-2">Vue d'ensemble de l'activité.</p>
+            <!-- Placeholder stats -->
+            <ul class="mt-4 text-sm text-gray-600">
+                <li>Cinémas actifs: <span class="font-bold" x-text="stats.cinemas"></span></li>
+                <li>Films dans la base de données: <span class="font-bold" x-text="stats.movies"></span></li>
+                <li>Séances cette semaine: <span class="font-bold" x-text="stats.seances"></span></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Quick Actions / Warnings -->
+    <div class="bg-red-50 p-4 rounded-md border border-red-200" x-show="false"> <!-- Toggle logic based on API data -->
+        <h4 class="text-red-800 font-bold">Attention</h4>
+        <p class="text-red-700 text-sm">Certains cinémas n'ont aucune séance programmée pour la semaine prochaine.</p>
+    </div>
+</div>
+{% endblock %}

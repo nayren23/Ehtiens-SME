@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4" x-data="moviesList()">
+    <!-- Hero Section -->
+    <div class="text-center py-12 bg-white rounded-lg shadow-sm mb-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Eh Tiens... Si on allait voir un film ?</h1>
+    </div>
+
+    <!-- Movies Filter -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8 max-w-xl mx-auto">
+        <div class="relative" x-data="{ open: false }">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Rechercher un film</label>
+            <input 
+                x-model="filters.movie" 
+                @focus="open = true" 
+                @click.away="open = false" 
+                @input="open = true"
+                type="text" 
+                placeholder="Titre du film..." 
+                class="border rounded px-3 py-2 w-full"
+            >
+            <!-- Dropdown -->
+            <div x-show="open && availableMovies.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
+                <template x-for="title in availableMovies" :key="title">
+                    <div 
+                        @click="filters.movie = title; open = false" 
+                        class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        x-text="title"
+                    ></div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Movies Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <template x-for="(movie, index) in filteredMovies" :key="index">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col">
+                <!-- Movie Poster -->
+                <a :href="'/movie/' + movie.movie_id" class="block">
+                    <div class="h-96 w-full overflow-hidden bg-gray-900 relative group">
+                        <template x-if="movie.poster">
+                            <img :src="movie.poster.startsWith('http') ? movie.poster : 'https://image.tmdb.org/t/p/w500' + movie.poster" :alt="movie.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        </template>
+                        <template x-if="!movie.poster">
+                            <div class="w-full h-full flex items-center justify-center text-gray-400">
+                                <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
+                            </div>
+                        </template>
+                        <div x-show="movie.minimum_age" class="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold" x-text="movie.minimum_age"></div>
+                    </div>
+                </a>
+                
+                <div class="p-4 flex-grow flex flex-col">
+                    <h3 class="font-bold text-lg text-gray-900 hover:text-indigo-600 mb-2">
+                        <a :href="'/movie/' + movie.movie_id" x-text="movie.title"></a>
+                    </h3>
+                    
+                    <div class="flex items-center gap-3 text-sm text-gray-600 mb-3">
+                        <span x-show="movie.release_date" class="flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span x-text="movie.release_date ? new Date(movie.release_date).getFullYear() : ''"></span>
+                        </span>
+                        <span x-show="movie.length_minutes" class="flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span x-text="movie.length_minutes + ' min'"></span>
+                        </span>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <a :href="'/movie/' + movie.movie_id" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-semibold text-sm">
+                            Voir les détails
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </template>
+        
+        <div x-show="movies.length === 0 && !loading" class="col-span-full text-center py-10 text-gray-500">
+            Aucun film trouvé.
+        </div>
+        
+        <div x-show="loading" class="col-span-full py-10 text-center text-gray-400">
+            Chargement...
+        </div>
+    </div>
+</div>
+
+<script>
+    function moviesList() {
+        return {
+            movies: [],
+            loading: false,
+            filters: {
+                movie: ''
+            },
+
+            async init() {
+                await this.loadMovies();
+            },
+            
+            async loadMovies() {
+                this.loading = true;
+                
+                try {
+                    const res = await fetch('/movie/all?limit=1000&offset=0');
+                    if (res.ok) {
+                        this.movies = await res.json();
+                    }
+                } catch (e) {
+                    console.error("Failed to load movies", e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            get availableMovies() {
+                const search = this.filters.movie.toLowerCase();
+                const titles = new Set(this.movies.map(m => m.title));
+                const sortedTitles = Array.from(titles).sort();
+                
+                if (!search) return sortedTitles;
+                return sortedTitles.filter(t => t.toLowerCase().includes(search));
+            },
+
+            get filteredMovies() {
+                if (!this.filters.movie) return this.movies;
+                return this.movies.filter(m => m.title.toLowerCase().includes(this.filters.movie.toLowerCase()));
+            }
+        }
+    }
+</script>
+{% endblock %}
