@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white p-8 border border-gray-300 shadow-lg rounded-lg mt-10" x-data="movieForm()">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Ajouter un Film</h2>
+
+    <!-- TMDB Search -->
+    <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Recherche TMDB (Auto-remplissage)</label>
+        <div class="flex gap-2">
+            <input x-model="searchQuery" @keyup.enter="searchTMDB" type="text" class="flex-grow shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Titre du film...">
+            <button @click="searchTMDB" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button">
+                Rechercher
+            </button>
+        </div>
+        
+        <!-- Results -->
+        <ul x-show="searchResults.length > 0" class="mt-4 bg-white border border-gray-200 divide-y divide-gray-200 rounded-md max-h-60 overflow-y-auto">
+            <template x-for="result in searchResults" :key="result.id">
+                <li class="p-3 hover:bg-gray-100 flex justify-between items-center cursor-pointer" @click="selectMovie(result.id)">
+                    <div>
+                        <span class="font-bold" x-text="result.title"></span>
+                        <span class="text-gray-500 text-sm" x-text="'(' + (result.release_date ? result.release_date.split('-')[0] : 'N/A') + ')'"></span>
+                    </div>
+                    <button class="text-sm bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">Sélectionner</button>
+                </li>
+            </template>
+        </ul>
+        <div x-show="searching" class="text-gray-500 mt-2 text-sm">Recherche en cours...</div>
+        <div x-show="searchError" class="text-red-500 mt-2 text-sm" x-text="searchError"></div>
+    </div>
+
+    <!-- Main Form -->
+    <form @submit.prevent="submitMovie">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Titre *</label>
+                <input x-model="form.title" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Date de sortie *</label>
+                <input x-model="form.date_publication" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="date" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Durée (minutes) *</label>
+                <input x-model="form.length_minutes" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="number" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Age Minimum</label>
+                <select x-model="form.minimum_age" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="Tous publics">Tous publics</option>
+                    <option value="-10 ans">-10 ans</option>
+                    <option value="-12 ans">-12 ans</option>
+                    <option value="-16 ans">-16 ans</option>
+                    <option value="-18 ans">-18 ans</option>
+                </select>
+            </div>
+
+            <div class="mb-4 md:col-span-2">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Synopsis</label>
+                <textarea x-model="form.synopsis" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="4"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">URL Poster</label>
+                <input x-model="form.poster" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text">
+                <template x-if="form.poster">
+                    <img :src="form.poster" class="mt-2 h-32 object-cover rounded">
+                </template>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Pays</label>
+                <input x-model="form.country" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Réalisateur</label>
+                <input x-model="form.producer" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Début Diffusion *</label>
+                <input x-model="form.begin_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="date" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Fin Diffusion *</label>
+                <input x-model="form.end_date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="date" required>
+            </div>
+
+            <div class="mb-4 md:col-span-2">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Acteurs (séparés par des virgules)</label>
+                <input x-model="form.actors" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" type="text" placeholder="Tom Cruise, Brad Pitt...">
+            </div>
+        </div>
+
+        <div x-show="submitError" class="mb-4 text-red-500 text-center" x-text="submitError"></div>
+        <div x-show="submitSuccess" class="mb-4 text-green-500 text-center">Film ajouté avec succès !</div>
+
+        <div class="flex items-center justify-end mt-6">
+            <button :disabled="submitting" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out" type="submit">
+                <span x-show="!submitting">Enregistrer le Film</span>
+                <span x-show="submitting">Enregistrement...</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function movieForm() {
+        return {
+            searchQuery: '',
+            searchResults: [],
+            searching: false,
+            searchError: '',
+            
+            submitting: false,
+            submitError: '',
+            submitSuccess: false,
+
+            form: {
+                title: '',
+                date_publication: '',
+                length_minutes: '',
+                minimum_age: 'Tous publics',
+                synopsis: '',
+                poster: '',
+                country: '',
+                producer: '',
+                begin_date: '',
+                end_date: '',
+                actors: ''
+            },
+
+            async init() {
+                // Set default dates
+                const today = new Date();
+                const nextTwoWeeks = new Date();
+                nextTwoWeeks.setDate(today.getDate() + 15);
+
+                this.form.begin_date = today.toISOString().split('T')[0];
+                this.form.end_date = nextTwoWeeks.toISOString().split('T')[0];
+                
+                // Debounce search
+                this.$watch('searchQuery', (value) => {
+                     if (this.searchTimeout) clearTimeout(this.searchTimeout);
+                     this.searchTimeout = setTimeout(() => {
+                         if (value && value.length > 2) {
+                             this.searchTMDB();
+                         }
+                     }, 500);
+                });
+            },
+
+            async searchTMDB() {
+                if (!this.searchQuery) return;
+                this.searching = true;
+                this.searchError = '';
+                this.searchResults = [];
+                try {
+                    const res = await fetch(`/movie/tmdb/search?query=${encodeURIComponent(this.searchQuery)}`, {
+                        credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Erreur recherche');
+                    const data = await res.json();
+                    this.searchResults = data.results || [];
+                } catch (e) {
+                    this.searchError = "Impossible de contacter TMDB.";
+                } finally {
+                    this.searching = false;
+                }
+            },
+
+            async selectMovie(id) {
+                this.searchError = '';
+                this.searchResults = []; // Clear results
+                try {
+                    const res = await fetch(`/movie/tmdb/${id}`, {
+                        credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Erreur détails');
+                    const data = await res.json();
+                    
+                    this.form.title = data.title;
+                    this.form.date_publication = data.release_date;
+                    this.form.length_minutes = data.runtime || 0;
+                    this.form.synopsis = data.overview;
+                    if (data.poster_path) {
+                        if (data.poster_path.startsWith('http')) {
+                             this.form.poster = data.poster_path;
+                        } else {
+                             this.form.poster = `https://image.tmdb.org/t/p/original${data.poster_path}`;
+                        }
+                    }
+                    if (data.production_countries && data.production_countries.length > 0) {
+                        this.form.country = data.production_countries[0].name;
+                    }
+                    if (data.director) {
+                        this.form.producer = data.director;
+                    }
+                    if (data.credits && data.credits.cast) {
+                        this.form.actors = data.credits.cast.slice(0, 5).map(c => c.name).join(', ');
+                    }
+                } catch (e) {
+                    this.searchError = "Erreur lors de la récupération des détails.";
+                }
+            },
+
+            async submitMovie() {
+                this.submitting = true;
+                this.submitError = '';
+                this.submitSuccess = false;
+
+                // Prepare payload
+                const payload = {
+                    ...this.form,
+                    actor_names: this.form.actors.split(',').map(s => s.trim()).filter(Boolean)
+                };
+
+                try {
+                    const res = await fetch('/movie/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.submitSuccess = true;
+                        // Redirect to the new movie page
+                        setTimeout(() => window.location.href = `/movie/${data.id}`, 1500);
+                    } else {
+                        this.submitError = data.message || 'Erreur inconnue';
+                    }
+                } catch (e) {
+                    this.submitError = 'Erreur réseau';
+                } finally {
+                    this.submitting = false;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+
+<div class="container mx-auto px-4" x-data="seanceList()">
+    <!-- Hero Section -->
+    <div class="text-center py-12 bg-white rounded-lg shadow-sm mb-8">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">Un film, un cinéma, une séance ... Eh Tiens ton ticket !</h1>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-wrap gap-4 items-center relative">
+        <div class="flex-grow">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Date</label>
+            <input x-ref="dateFilter" x-model="filters.date" class="border rounded px-3 py-2 w-full bg-white cursor-pointer" placeholder="Choisir une date...">
+        </div>
+
+        <div class="flex-grow">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Ville</label>
+            <select x-model="filters.city" class="border rounded px-3 py-2 w-full">
+                <option value="">Toutes les villes</option>
+                <template x-for="city in cities" :key="city">
+                    <option :value="city" x-text="city"></option>
+                </template>
+            </select>
+        </div>
+
+        <div class="flex-grow">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Cinéma</label>
+            <select x-model="filters.cinema" class="border rounded px-3 py-2 w-full">
+                <option value="">Tous les cinémas</option>
+                <template x-for="c in availableCinemas" :key="c">
+                    <option :value="c" x-text="c"></option>
+                </template>
+            </select>
+        </div>
+
+        <!-- Movie Filter with Autocomplete -->
+        <div class="flex-grow relative" x-data="{ open: false }">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Film</label>
+            <input 
+                x-model="filters.movie" 
+                @focus="open = true" 
+                @click.away="open = false" 
+                @input="open = true"
+                type="text" 
+                placeholder="Rechercher un film..." 
+                class="border rounded px-3 py-2 w-full"
+            >
+            <!-- Dropdown -->
+            <div x-show="open && availableMovies.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded shadow-lg max-h-60 overflow-y-auto">
+                <template x-for="movie in availableMovies" :key="movie">
+                    <div 
+                        @click="filters.movie = movie; open = false" 
+                        class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        x-text="movie"
+                    ></div>
+                </template>
+            </div>
+        </div>
+
+        <div class="flex-grow">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Trier par</label>
+            <select x-model="sortBy" class="border rounded px-3 py-2 w-full">
+                <option value="date">Date (Prochainement)</option>
+                <option value="movie">Film (A-Z)</option>
+                <option value="cinema">Cinéma (A-Z)</option>
+            </select>
+        </div>
+        
+        <!-- View Switcher -->
+        <div class="flex items-end pb-1 gap-2">
+            <button @click="viewMode = 'list'" :class="{'bg-gray-200': viewMode === 'list'}" class="p-2 rounded hover:bg-gray-100" title="Vue Liste">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <button @click="viewMode = 'grid'" :class="{'bg-gray-200': viewMode === 'grid'}" class="p-2 rounded hover:bg-gray-100" title="Vue Grille">
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            </button>
+        </div>
+        
+        <!-- Clear Filters Button -->
+        <button @click="resetFilters" class="mt-6 text-sm text-gray-500 hover:text-red-500">
+            Réinitialiser
+        </button>
+    </div>
+
+    <!-- Seances List -->
+    <div :class="{'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6': viewMode === 'grid', 'flex flex-col gap-4': viewMode === 'list'}">
+        <template x-for="(seance, index) in filteredSeances" :key="index">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative group" :class="{'flex flex-col': viewMode === 'grid', 'flex flex-row': viewMode === 'list'}">
+                
+                <!-- Admin Delete Button -->
+                <button x-show="isAdmin" @click="deleteSeance(seance.seance_id)" class="absolute top-2 right-2 z-10 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity duration-200" title="Supprimer la séance">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                <!-- Movie Poster -->
+                <div :class="{'h-64 w-full': viewMode === 'grid', 'w-32 h-48 flex-shrink-0': viewMode === 'list'}" class="overflow-hidden bg-gray-900 relative">
+                     <template x-if="seance.movie_poster">
+                        <img :src="seance.movie_poster.startsWith('http') ? seance.movie_poster : 'https://image.tmdb.org/t/p/w500' + seance.movie_poster" :alt="seance.movie_title" class="w-full h-full object-cover">
+                     </template>
+                     <template x-if="!seance.movie_poster">
+                        <div class="w-full h-full flex items-center justify-center text-gray-500">
+                            <span>Pas d'affiche</span>
+                        </div>
+                     </template>
+                </div>
+                
+                <div class="p-6 flex-grow flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-gray-900 hover:text-indigo-600">
+                                 <a :href="'/movie/' + seance.movie_id" x-text="seance.movie_title" :class="{'text-xl': viewMode === 'grid', 'text-2xl': viewMode === 'list'}"></a>
+                            </h3>
+                            <span class="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded flex-shrink-0 ml-2" x-text="seance.language"></span>
+                        </div>
+                        <p class="text-gray-600 mb-4 flex items-center">
+                            <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <a :href="'/cinema/' + seance.cinema_id" class="hover:text-indigo-600 hover:underline">
+                                <span x-text="seance.cinema_name"></span>
+                            </a>
+                            <span x-text="', ' + seance.city"></span>
+                        </p>
+                    </div>
+                    
+                    <div class="border-t border-gray-100 pt-4 mt-2">
+                        <div class="flex items-center text-gray-700">
+                            <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="font-semibold" x-text="formatDate(seance.date_time)"></span>
+                        </div>
+                        <div class="flex items-center mt-1 text-gray-500 text-sm">
+                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                            <span x-text="seance.room"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        
+        <!-- Messages & Loaders -->
+        <div x-show="filteredSeances.length === 0 && !hasMore && !firstLoad" class="col-span-full text-center py-10 text-gray-500">
+            Aucune séance trouvée pour ces critères.
+        </div>
+        
+        <div x-show="hasMore && !loading && filteredSeances.length > 0" x-intersect="loadMore()" class="col-span-full py-10 text-center text-gray-400">
+            Chargement de la suite...
+        </div>
+        <div x-show="loading" class="col-span-full py-10 text-center text-gray-400">
+            Chargement...
+        </div>
+    </div>
+</div>
+
+<script>
+    function seanceList() {
+        return {
+            seances: [],
+            loggedIn: localStorage.getItem('isLoggedIn') === 'true',
+            isAdmin: localStorage.getItem('isAdmin') === 'true',
+            viewMode: 'list',
+            filters: {
+                date: '',
+                city: '',
+                cinema: '',
+                movie: ''
+            },
+            sortBy: 'date',
+            
+            // Pagination
+            offset: 0,
+            limit: 50,
+            hasMore: true,
+            loading: false,
+            firstLoad: true,
+
+            async init() {
+                // Init Flatpickr
+                flatpickr(this.$refs.dateFilter, {
+                    dateFormat: "Y-m-d",
+                    minDate: "today",
+                    locale: "fr",
+                    altInput: true,
+                    altFormat: "l j F Y",
+                    onChange: (selectedDates, dateStr) => {
+                        this.filters.date = dateStr;
+                    }
+                });
+
+                // Handle URL params for auto-filter
+                const params = new URLSearchParams(window.location.search);
+                const cinemaParam = params.get('cinema');
+                const movieParam = params.get('movie');
+                
+                if (cinemaParam) this.filters.cinema = decodeURIComponent(cinemaParam);
+                if (movieParam) this.filters.movie = decodeURIComponent(movieParam);
+
+                await this.loadMore();
+                this.firstLoad = false;
+            },
+            
+            async loadMore() {
+                if (this.loading || !this.hasMore) return;
+                this.loading = true;
+                
+                try {
+                    const res = await fetch(`/seance/upcoming?limit=${this.limit}&offset=${this.offset}`);
+                    if (res.ok) {
+                        const newSeances = await res.json();
+                        if (newSeances.length < this.limit) {
+                            this.hasMore = false;
+                        }
+                        this.seances = [...this.seances, ...newSeances];
+                        this.offset += this.limit;
+                    } else {
+                        this.hasMore = false;
+                    }
+                } catch (e) {
+                    console.error("Failed to load seances", e);
+                    this.hasMore = false;
+                } finally {
+                    this.loading = false;
+                    // Auto-load if we have no visible results yet but more data exists
+                    // This is essential for client-side filtering to find matches in later pages
+                    if (this.hasMore && this.filteredSeances.length === 0) {
+                         this.$nextTick(() => {
+                             this.loadMore();
+                         });
+                    }
+                }
+            },
+            
+            async deleteSeance(id) {
+                if (!confirm("Voulez-vous vraiment supprimer cette séance ?")) return;
+                
+                try {
+                    const res = await fetch(`/seance/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        // Remove from local list
+                        this.seances = this.seances.filter(s => s.seance_id !== id);
+                    } else {
+                        alert("Erreur lors de la suppression");
+                    }
+                } catch (e) {
+                    console.error("Delete failed", e);
+                    alert("Erreur réseau");
+                }
+            },
+            
+            resetFilters() {
+                this.filters.date = '';
+                this.filters.city = '';
+                this.filters.cinema = '';
+                this.filters.movie = '';
+                this.$refs.dateFilter._flatpickr.clear();
+                window.history.pushState({}, document.title, window.location.pathname);
+            },
+
+            get cities() {
+                const cities = new Set(this.seances.map(s => s.city));
+                return Array.from(cities).sort();
+            },
+
+            get availableCinemas() {
+                // Note: With pagination, this list only reflects LOADED seances. 
+                // Ideally, filters should be fetched from separate endpoints.
+                // But for now, we filter based on what we have.
+                let list = this.seances;
+                if (this.filters.city) {
+                    list = list.filter(s => s.city === this.filters.city);
+                }
+                const cinemas = new Set(list.map(s => s.cinema_name));
+                return Array.from(cinemas).sort();
+            },
+            
+            get availableMovies() {
+                let list = this.seances;
+                if (this.filters.date) list = list.filter(s => s.date_time.startsWith(this.filters.date));
+                if (this.filters.city) list = list.filter(s => s.city === this.filters.city);
+                if (this.filters.cinema) list = list.filter(s => s.cinema_name === this.filters.cinema);
+                
+                const search = this.filters.movie.toLowerCase();
+                const movies = new Set(list.map(s => s.movie_title));
+                const sortedMovies = Array.from(movies).sort();
+                
+                if (!search) return sortedMovies;
+                return sortedMovies.filter(m => m.toLowerCase().includes(search));
+            },
+
+            get filteredSeances() {
+                // If filters are active, we might need to load ALL data or handle server-side filtering.
+                // Current implementation only filters CLIENT-SIDE on LOADED data.
+                // This is a limitation of mixing lazy loading with client-side filtering without server search.
+                // However, for "too many movies overwhelming client", this is the trade-off.
+                // A robust solution would move filtering to the backend.
+                // Given the instructions, we stick to this for now, but user should know filtering only applies to visible items.
+                // Actually, if a user filters, they might expect to find items not yet loaded. 
+                // Fixing this properly requires server-side filtering params in loadMore().
+                
+                // Let's keep it simple: lazy loading loads chronologically. Filtering filters what's loaded.
+                
+                let filtered = this.seances.filter(s => {
+                    const seanceDate = new Date(s.date_time).toISOString().split('T')[0];
+                    const matchDate = !this.filters.date || seanceDate === this.filters.date;
+                    const matchCity = !this.filters.city || s.city === this.filters.city;
+                    const matchCinema = !this.filters.cinema || s.cinema_name === this.filters.cinema;
+                    const matchMovie = !this.filters.movie || s.movie_title.toLowerCase().includes(this.filters.movie.toLowerCase());
+                    return matchDate && matchCity && matchCinema && matchMovie;
+                });
+
+                return filtered.sort((a, b) => {
+                    if (this.sortBy === 'date') {
+                        return new Date(a.date_time) - new Date(b.date_time);
+                    } else if (this.sortBy === 'movie') {
+                        return a.movie_title.localeCompare(b.movie_title);
+                    } else if (this.sortBy === 'cinema') {
+                        return a.cinema_name.localeCompare(b.cinema_name);
+                    }
+                    return 0;
+                });
+            },
+
+            formatDate(dateStr) {
+                // Backend sends naive time but serialized as GMT (e.g. "Fri, 13 Dec 2025 20:00:00 GMT")
+                // We want to treat "20:00:00" as the literal time to display, ignoring the "GMT" suffix and client timezone.
+                
+                // 1. Remove "GMT" or similar timezone indicators if present to prevent auto-conversion
+                let cleanDateStr = dateStr.replace(' GMT', '');
+                
+                // 2. Parse it. new Date("Fri, 13 Dec 2025 20:00:00") creates a date object in LOCAL time with those components.
+                // This effectively "forces" the server's clock time onto the client's clock time.
+                const date = new Date(cleanDateStr);
+                
+                return date.toLocaleString('fr-FR', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            }
+        }
+    }
+</script>
+{% endblock %}

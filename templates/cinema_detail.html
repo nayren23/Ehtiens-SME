@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8" x-data="cinemaDetail()">
+    <template x-if="loading">
+        <div class="text-center py-20 text-gray-500">Chargement du cinéma...</div>
+    </template>
+
+    <template x-if="!loading && cinema">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Cinema Header -->
+            <div class="relative h-64 bg-gray-800">
+                 <img :src="cinema.ci_cinema_picture || 'https://via.placeholder.com/800x300?text=Cinema'" class="w-full h-full object-cover opacity-60">
+                 <div class="absolute bottom-0 left-0 p-8 text-white drop-shadow-md">
+                     <h1 class="text-4xl font-bold mb-1" x-text="cinema.ci_cinema_name"></h1>
+                     <p class="text-xl opacity-90">
+                        <span x-text="cinema.ci_address"></span>, <span x-text="cinema.ci_city"></span>
+                     </p>
+                 </div>
+            </div>
+
+            <!-- Movies List -->
+            <div class="p-8">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">À l'affiche</h2>
+                
+                <div class="space-y-6">
+                    <template x-for="movie in uniqueMovies" :key="movie.movie_id">
+                        <div class="flex flex-col md:flex-row bg-gray-50 border rounded-lg overflow-hidden hover:bg-gray-100 transition">
+                            <!-- Movie Poster -->
+                            <div class="md:w-32 h-48 md:h-auto flex-shrink-0 relative">
+                                <a :href="'/seance?cinema=' + encodeURIComponent(cinema.ci_cinema_name) + '&movie=' + encodeURIComponent(movie.movie_title)">
+                                    <img :src="movie.movie_poster ? (movie.movie_poster.startsWith('http') ? movie.movie_poster : 'https://image.tmdb.org/t/p/w200' + movie.movie_poster) : 'https://via.placeholder.com/150x225'" class="w-full h-full object-cover">
+                                </a>
+                            </div>
+                            
+                            <!-- Info -->
+                            <div class="p-4 flex flex-col justify-between flex-grow">
+                                <div>
+                                    <a :href="'/seance?cinema=' + encodeURIComponent(cinema.ci_cinema_name) + '&movie=' + encodeURIComponent(movie.movie_title)" class="text-xl font-bold text-gray-900 hover:text-indigo-600" x-text="movie.movie_title"></a>
+                                    <div class="mt-2 text-gray-600 flex items-center">
+                                         <!-- Display counts or languages -->
+                                         <span class="text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded" x-text="movie.seance_count + ' séance(s)'"></span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 text-right">
+                                    <a :href="'/seance?cinema=' + encodeURIComponent(cinema.ci_cinema_name) + '&movie=' + encodeURIComponent(movie.movie_title)" class="text-indigo-600 hover:underline text-sm font-semibold">Voir les dates &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="uniqueMovies.length === 0" class="text-gray-500">Aucune séance à venir.</div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+    function cinemaDetail() {
+        return {
+            loading: true,
+            cinema: null,
+            seances: [],
+
+            async init() {
+                const cinemaId = {{ cinema_id }};
+                
+                try {
+                    const resC = await fetch(`/seance/cinema/${cinemaId}`);
+                    if(resC.ok) this.cinema = await resC.json();
+                    
+                    const resS = await fetch(`/seance/cinema/${cinemaId}/seances`);
+                    if(resS.ok) this.seances = await resS.json();
+
+                } catch (e) {
+                    console.error("Error loading data", e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+            
+            get uniqueMovies() {
+                const moviesMap = new Map();
+                
+                this.seances.forEach(s => {
+                    if (!moviesMap.has(s.movie_id)) {
+                        moviesMap.set(s.movie_id, {
+                            ...s,
+                            seance_count: 1
+                        });
+                    } else {
+                        moviesMap.get(s.movie_id).seance_count++;
+                    }
+                });
+                
+                return Array.from(moviesMap.values());
+            },
+
+            formatDate(dateStr) {
+                const date = new Date(dateStr);
+                return date.toLocaleString('fr-FR', { 
+                    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
+                });
+            }
+        }
+    }
+</script>
+{% endblock %}
